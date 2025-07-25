@@ -1,4 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
+  console.log("✅ Script loaded and DOM ready");
+
   const { PDFDocument } = PDFLib;
   const dropArea = document.getElementById("drop-area");
   const fileInput = document.getElementById("videoInput");
@@ -12,10 +14,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let selectedFile = null;
 
-  // ✅ Enable click-to-upload
-  dropArea.addEventListener("click", () => fileInput.click());
+  // ✅ Click to Upload
+  dropArea.addEventListener("click", () => {
+    console.log("📂 Drop area clicked → opening file dialog");
+    fileInput.click();
+  });
 
-  // ✅ Drag and Drop logic
+  fileInput.addEventListener("change", (e) => {
+    selectedFile = e.target.files[0];
+    if (selectedFile) {
+      console.log("✅ File selected:", selectedFile.name);
+      progress.innerText = `Selected: ${selectedFile.name}`;
+      processBtn.disabled = false;
+    }
+  });
+
+  // ✅ Drag & Drop
   dropArea.addEventListener("dragover", (e) => {
     e.preventDefault();
     dropArea.classList.add("dragover");
@@ -30,24 +44,20 @@ document.addEventListener("DOMContentLoaded", () => {
     dropArea.classList.remove("dragover");
     selectedFile = e.dataTransfer.files[0];
     if (selectedFile) {
+      console.log("✅ File dropped:", selectedFile.name);
       progress.innerText = `Selected: ${selectedFile.name}`;
       processBtn.disabled = false;
     }
   });
 
-  // ✅ File input change
-  fileInput.addEventListener("change", (e) => {
-    selectedFile = e.target.files[0];
-    if (selectedFile) {
-      progress.innerText = `Selected: ${selectedFile.name}`;
-      processBtn.disabled = false;
-    }
-  });
-
-  // ✅ Generate PDF from video frames
+  // ✅ Create Flipbook
   processBtn.addEventListener("click", async () => {
-    if (!selectedFile) return alert("Upload a video first!");
+    if (!selectedFile) {
+      alert("Upload a video first!");
+      return;
+    }
 
+    console.log("▶ Starting flipbook process");
     processBtn.disabled = true;
     processBtn.innerText = "Processing... ⏳";
 
@@ -61,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const frameCount = 32;
       const interval = duration / frameCount;
 
-      canvas.width = 1024; // High resolution for print
+      canvas.width = 1024;
       canvas.height = 768;
 
       const pdfDoc = await PDFDocument.create();
