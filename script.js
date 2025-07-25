@@ -40,15 +40,21 @@ document.addEventListener("DOMContentLoaded", () => {
   processBtn.addEventListener('click', async () => {
     if (!selectedFile) return alert("Upload a video first!");
 
+    // Disable button & show loading
+    processBtn.disabled = true;
+    processBtn.innerText = "Processing... ⏳";
+
     const url = URL.createObjectURL(selectedFile);
     video.src = url;
+    video.muted = true;
+    video.playsInline = true;
 
     video.onloadedmetadata = async () => {
       const duration = video.duration;
       const frameCount = 32;
       const interval = duration / frameCount;
 
-      canvas.width = 1024; // Higher res for print
+      canvas.width = 1024; // High resolution for print
       canvas.height = 768;
 
       const pdfDoc = await PDFDocument.create();
@@ -67,6 +73,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
         images.push(dataUrl);
         progress.innerText = `Captured ${i + 1} / ${frameCount}`;
+        await new Promise(r => setTimeout(r, 50));
       }
 
       progress.innerText = "Building PDF...";
@@ -96,7 +103,9 @@ document.addEventListener("DOMContentLoaded", () => {
         win.print();
       };
 
-      progress.innerText = "PDF ready!";
+      progress.innerText = "✅ PDF ready!";
+      processBtn.innerText = "Create Flipbook";
+      processBtn.disabled = false;
     };
   });
 
