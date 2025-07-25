@@ -10,7 +10,7 @@
   <div class="container">
     <h1>📖 Flipbook Maker</h1>
     <div id="drop-area">
-      <p>Drag & Drop your video here or click to select</p>
+      <p id="drop-text">Drag & Drop your video here or click to select</p>
       <input type="file" id="videoInput" accept="video/*" hidden>
     </div>
     <button id="processBtn" disabled>Generate Flipbook PDF</button>
@@ -19,8 +19,6 @@
     <button id="printBtn" class="hidden">Print PDF</button>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.2/dist/ffmpeg.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
