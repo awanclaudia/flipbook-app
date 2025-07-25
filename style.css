@@ -28,6 +28,7 @@ h1 {
   background: #fafafa;
   margin-bottom: 15px;
   cursor: pointer;
+  transition: 0.2s;
 }
 
 #drop-area.dragover {
@@ -44,11 +45,16 @@ button, a {
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  transition: background 0.3s;
 }
 
 button {
   background: #00acc1;
   color: #fff;
+}
+
+button:hover:enabled {
+  background: #008b9a;
 }
 
 button:disabled {
@@ -63,6 +69,10 @@ a {
   color: #fff;
 }
 
+a:hover {
+  background: #2e7d32;
+}
+
 .hidden {
   display: none;
 }
@@ -70,4 +80,5 @@ a {
 #progress {
   font-size: 14px;
   color: #555;
+  margin-top: 10px;
 }
