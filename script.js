@@ -1,34 +1,42 @@
 document.addEventListener("DOMContentLoaded", () => {
   const { PDFDocument } = PDFLib;
-  const dropArea = document.getElementById('drop-area');
-  const fileInput = document.getElementById('videoInput');
-  const processBtn = document.getElementById('processBtn');
-  const progress = document.getElementById('progress');
-  const downloadLink = document.getElementById('downloadLink');
-  const printBtn = document.getElementById('printBtn');
-  const video = document.getElementById('video');
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
+  const dropArea = document.getElementById("drop-area");
+  const fileInput = document.getElementById("videoInput");
+  const processBtn = document.getElementById("processBtn");
+  const progress = document.getElementById("progress");
+  const downloadLink = document.getElementById("downloadLink");
+  const printBtn = document.getElementById("printBtn");
+  const video = document.getElementById("video");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
 
   let selectedFile = null;
 
-  // ✅ Drag & Drop or Click Upload
-  dropArea.addEventListener('click', () => fileInput.click());
-  dropArea.addEventListener('dragover', (e) => {
+  // ✅ Enable click-to-upload
+  dropArea.addEventListener("click", () => fileInput.click());
+
+  // ✅ Drag and Drop logic
+  dropArea.addEventListener("dragover", (e) => {
     e.preventDefault();
-    dropArea.classList.add('dragover');
+    dropArea.classList.add("dragover");
   });
-  dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
-  dropArea.addEventListener('drop', (e) => {
+
+  dropArea.addEventListener("dragleave", () => {
+    dropArea.classList.remove("dragover");
+  });
+
+  dropArea.addEventListener("drop", (e) => {
     e.preventDefault();
-    dropArea.classList.remove('dragover');
+    dropArea.classList.remove("dragover");
     selectedFile = e.dataTransfer.files[0];
     if (selectedFile) {
       progress.innerText = `Selected: ${selectedFile.name}`;
       processBtn.disabled = false;
     }
   });
-  fileInput.addEventListener('change', (e) => {
+
+  // ✅ File input change
+  fileInput.addEventListener("change", (e) => {
     selectedFile = e.target.files[0];
     if (selectedFile) {
       progress.innerText = `Selected: ${selectedFile.name}`;
@@ -37,10 +45,9 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ✅ Generate PDF from video frames
-  processBtn.addEventListener('click', async () => {
+  processBtn.addEventListener("click", async () => {
     if (!selectedFile) return alert("Upload a video first!");
 
-    // Disable button & show loading
     processBtn.disabled = true;
     processBtn.innerText = "Processing... ⏳";
 
@@ -73,7 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
         images.push(dataUrl);
         progress.innerText = `Captured ${i + 1} / ${frameCount}`;
-        await new Promise(r => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, 50));
       }
 
       progress.innerText = "Building PDF...";
@@ -81,7 +88,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const page = pdfDoc.addPage([pageWidth, pageHeight]);
         for (let j = 0; j < 4; j++) {
           if (i + j >= images.length) break;
-          const img = await pdfDoc.embedJpg(await fetch(images[i + j]).then(r => r.arrayBuffer()));
+          const img = await pdfDoc.embedJpg(
+            await fetch(images[i + j]).then((r) => r.arrayBuffer())
+          );
           const x = (j % 2) * frameWidth;
           const y = j < 2 ? pageHeight / 2 : 0;
           page.drawImage(img, { x, y, width: frameWidth, height: frameHeight });
@@ -89,17 +98,17 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const pdfBytes = await pdfDoc.save();
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const blob = new Blob([pdfBytes], { type: "application/pdf" });
       const pdfUrl = URL.createObjectURL(blob);
 
       downloadLink.href = pdfUrl;
       downloadLink.download = "flipbook.pdf";
-      downloadLink.classList.remove('hidden');
+      downloadLink.classList.remove("hidden");
       downloadLink.innerText = "Download PDF";
 
-      printBtn.classList.remove('hidden');
+      printBtn.classList.remove("hidden");
       printBtn.onclick = () => {
-        const win = window.open(pdfUrl, '_blank');
+        const win = window.open(pdfUrl, "_blank");
         win.print();
       };
 
