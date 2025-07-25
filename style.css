@@ -13,7 +13,7 @@ body {
   padding: 20px;
   border-radius: 12px;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   width: 320px;
 }
 
@@ -36,7 +36,8 @@ h1 {
   border-color: #00acc1;
 }
 
-button, a {
+button,
+a {
   display: block;
   width: 100%;
   padding: 10px;
