@@ -1,47 +1,103 @@
 document.addEventListener("DOMContentLoaded", () => {
+  const { PDFDocument } = PDFLib;
+  const { createFFmpeg, fetchFile } = FFmpeg;
+  const ffmpeg = createFFmpeg({ log: true });
+
   const dropArea = document.getElementById('drop-area');
   const fileInput = document.getElementById('videoInput');
   const processBtn = document.getElementById('processBtn');
   const progress = document.getElementById('progress');
+  const downloadLink = document.getElementById('downloadLink');
+  const printBtn = document.getElementById('printBtn');
 
   let selectedFile = null;
 
-  // ✅ Click area opens file picker
-  dropArea.addEventListener('click', () => {
-    console.log("Click detected");
-    fileInput.click();
-  });
+  // ✅ Click to select
+  dropArea.addEventListener('click', () => fileInput.click());
 
-  // ✅ Drag over highlights drop zone
+  // ✅ Drag & Drop
   dropArea.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropArea.classList.add('dragover');
   });
-
-  // ✅ Remove highlight on drag leave
-  dropArea.addEventListener('dragleave', () => {
-    dropArea.classList.remove('dragover');
-  });
-
-  // ✅ Handle file drop
+  dropArea.addEventListener('dragleave', () => dropArea.classList.remove('dragover'));
   dropArea.addEventListener('drop', (e) => {
     e.preventDefault();
     dropArea.classList.remove('dragover');
     selectedFile = e.dataTransfer.files[0];
     if (selectedFile) {
-      console.log("File dropped:", selectedFile.name);
       progress.innerText = `Selected: ${selectedFile.name}`;
       processBtn.disabled = false;
     }
   });
 
-  // ✅ Handle file input (click upload)
+  // ✅ File input
   fileInput.addEventListener('change', (e) => {
     selectedFile = e.target.files[0];
     if (selectedFile) {
-      console.log("File selected:", selectedFile.name);
       progress.innerText = `Selected: ${selectedFile.name}`;
       processBtn.disabled = false;
     }
+  });
+
+  // ✅ Generate PDF
+  processBtn.addEventListener('click', async () => {
+    if (!selectedFile) {
+      alert("Please upload a video first.");
+      return;
+    }
+
+    progress.innerText = "Loading FFmpeg...";
+    if (!ffmpeg.isLoaded()) await ffmpeg.load();
+
+    const filename = "input.mp4";
+    ffmpeg.FS('writeFile', filename, await fetchFile(selectedFile));
+
+    progress.innerText = "Extracting 32 frames...";
+    await ffmpeg.run(
+      '-i', filename,
+      '-vf', 'fps=32/6', // 32 frames from 6 seconds
+      'frame%03d.jpg'
+    );
+
+    progress.innerText = "Creating PDF...";
+    const pdfDoc = await PDFDocument.create();
+
+    const pageWidth = 432; // ~15.2 cm (4R width)
+    const pageHeight = 288; // ~10.2 cm (4R height)
+    const frameWidth = pageWidth / 2;
+    const frameHeight = pageHeight / 2;
+
+    for (let i = 1; i <= 32; i += 4) {
+      const page = pdfDoc.addPage([pageWidth, pageHeight]);
+      for (let j = 0; j < 4; j++) {
+        const idx = i + j;
+        if (idx > 32) break;
+        const name = `frame${String(idx).padStart(3, '0')}.jpg`;
+        const data = ffmpeg.FS('readFile', name);
+        const img = await pdfDoc.embedJpg(data);
+
+        const x = (j % 2) * frameWidth;
+        const y = j < 2 ? pageHeight / 2 : 0;
+        page.drawImage(img, { x, y, width: frameWidth, height: frameHeight });
+      }
+    }
+
+    const pdfBytes = await pdfDoc.save();
+    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+
+    downloadLink.href = url;
+    downloadLink.download = "flipbook.pdf";
+    downloadLink.classList.remove('hidden');
+    downloadLink.innerText = "Download PDF";
+
+    printBtn.classList.remove('hidden');
+    printBtn.onclick = () => {
+      const win = window.open(url, '_blank');
+      win.print();
+    };
+
+    progress.innerText = "PDF ready!";
   });
 });
