@@ -1,21 +1,19 @@
 document.addEventListener("DOMContentLoaded", () => {
   const { PDFDocument } = PDFLib;
-  const { createFFmpeg, fetchFile } = FFmpeg;
-  const ffmpeg = createFFmpeg({ log: true });
-
   const dropArea = document.getElementById('drop-area');
   const fileInput = document.getElementById('videoInput');
   const processBtn = document.getElementById('processBtn');
   const progress = document.getElementById('progress');
   const downloadLink = document.getElementById('downloadLink');
   const printBtn = document.getElementById('printBtn');
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
 
   let selectedFile = null;
 
-  // ✅ Click to select
+  // ✅ Drag & Drop or Click Upload
   dropArea.addEventListener('click', () => fileInput.click());
-
-  // ✅ Drag & Drop
   dropArea.addEventListener('dragover', (e) => {
     e.preventDefault();
     dropArea.classList.add('dragover');
@@ -30,8 +28,6 @@ document.addEventListener("DOMContentLoaded", () => {
       processBtn.disabled = false;
     }
   });
-
-  // ✅ File input
   fileInput.addEventListener('change', (e) => {
     selectedFile = e.target.files[0];
     if (selectedFile) {
@@ -40,42 +36,45 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // ✅ Generate PDF
+  // ✅ Generate PDF from video frames
   processBtn.addEventListener('click', async () => {
-    if (!selectedFile) {
-      alert("Please upload a video first.");
-      return;
-    }
+    if (!selectedFile) return alert("Upload a video first!");
 
-    try {
-      progress.innerText = "Loading FFmpeg (may take 10-20 sec)...";
-      console.log("Loading FFmpeg...");
-      if (!ffmpeg.isLoaded()) await ffmpeg.load();
+    const url = URL.createObjectURL(selectedFile);
+    video.src = url;
 
-      const filename = "input.mp4";
-      ffmpeg.FS('writeFile', filename, await fetchFile(selectedFile));
+    video.onloadedmetadata = async () => {
+      const duration = video.duration;
+      const frameCount = 32;
+      const interval = duration / frameCount;
 
-      progress.innerText = "Extracting 32 frames (may take a while)...";
-      console.log("Running FFmpeg...");
-      await ffmpeg.run('-i', filename, '-vf', 'fps=32/6', 'frame%03d.jpg');
+      canvas.width = 1024; // Higher res for print
+      canvas.height = 768;
 
-      progress.innerText = "Creating PDF...";
-      console.log("Building PDF...");
       const pdfDoc = await PDFDocument.create();
-
       const pageWidth = 432; // 6 inch
       const pageHeight = 288; // 4 inch
       const frameWidth = pageWidth / 2;
       const frameHeight = pageHeight / 2;
 
-      for (let i = 1; i <= 32; i += 4) {
+      let images = [];
+
+      progress.innerText = "Capturing frames...";
+      for (let i = 0; i < frameCount; i++) {
+        const time = i * interval;
+        await seekVideo(video, time);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+        images.push(dataUrl);
+        progress.innerText = `Captured ${i + 1} / ${frameCount}`;
+      }
+
+      progress.innerText = "Building PDF...";
+      for (let i = 0; i < images.length; i += 4) {
         const page = pdfDoc.addPage([pageWidth, pageHeight]);
         for (let j = 0; j < 4; j++) {
-          const idx = i + j;
-          if (idx > 32) break;
-          const name = `frame${String(idx).padStart(3, '0')}.jpg`;
-          const data = ffmpeg.FS('readFile', name);
-          const img = await pdfDoc.embedJpg(data);
+          if (i + j >= images.length) break;
+          const img = await pdfDoc.embedJpg(await fetch(images[i + j]).then(r => r.arrayBuffer()));
           const x = (j % 2) * frameWidth;
           const y = j < 2 ? pageHeight / 2 : 0;
           page.drawImage(img, { x, y, width: frameWidth, height: frameHeight });
@@ -84,24 +83,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const pdfBytes = await pdfDoc.save();
       const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const url = URL.createObjectURL(blob);
+      const pdfUrl = URL.createObjectURL(blob);
 
-      downloadLink.href = url;
+      downloadLink.href = pdfUrl;
       downloadLink.download = "flipbook.pdf";
       downloadLink.classList.remove('hidden');
       downloadLink.innerText = "Download PDF";
 
       printBtn.classList.remove('hidden');
       printBtn.onclick = () => {
-        const win = window.open(url, '_blank');
+        const win = window.open(pdfUrl, '_blank');
         win.print();
       };
 
       progress.innerText = "PDF ready!";
-      console.log("Done!");
-    } catch (error) {
-      console.error("Error:", error);
-      progress.innerText = "Failed to generate PDF. Check console.";
-    }
+    };
   });
+
+  function seekVideo(video, time) {
+    return new Promise((resolve) => {
+      video.currentTime = time;
+      video.onseeked = () => resolve();
+    });
+  }
 });
